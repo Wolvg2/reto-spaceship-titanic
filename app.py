@@ -12,12 +12,11 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Spaceship Titanic - Predicción", page_icon="🚀")
+st.set_page_config(page_title="Spaceship Titanic - Predicción")
 
-# ---------------------------------------------------------------------------
+
 # Carga del modelo y los artifacts de preprocesamiento (ajustados en el
-# notebook con train.csv; ver session1_export en el repo del proyecto).
-# ---------------------------------------------------------------------------
+# notebook con train.csv
 @st.cache_resource
 def cargar_modelo():
     modelo = joblib.load("modelo_final.joblib")
@@ -29,13 +28,11 @@ modelo, art = cargar_modelo()
 
 
 def preprocesar_pasajero(raw: dict) -> pd.DataFrame:
-    """Replica exactamente el pipeline del primer avance (secciones 4-7)
-    para una sola fila nueva (un pasajero hipotético)."""
+    """Replica exactamente el pipeline del primer avance para un solo pasajero."""
 
     df = pd.DataFrame([raw])
 
-    # --- 4. Imputación (aquí no debería hacer falta, el formulario ya pide
-    # todo, pero se deja el fallback por si algún campo llega vacío) ---
+    # --- Imputación ---
     if pd.isna(df.at[0, "CryoSleep"]):
         df.at[0, "CryoSleep"] = art["cryo_mode"]
     if pd.isna(df.at[0, "VIP"]):
@@ -61,7 +58,7 @@ def preprocesar_pasajero(raw: dict) -> pd.DataFrame:
         if pd.isna(df.at[0, col]):
             df.at[0, col] = "Unknown"
 
-    # --- 5. Codificación ---
+    # --- Codificación ---
     df["CryoSleep"] = df["CryoSleep"].astype(int)
     df["VIP"] = df["VIP"].astype(int)
     df["Deck"] = df["Deck"].map(art["deck_order"])
@@ -70,11 +67,11 @@ def preprocesar_pasajero(raw: dict) -> pd.DataFrame:
     df = pd.get_dummies(df, columns=nominal_cols, dtype=int)
     df = df.reindex(columns=art["dummy_columns"], fill_value=0)
 
-    # --- 6. log1p en las variables sesgadas ---
+    # --- log1p en las variables sesgadas ---
     for col in art["high_skewed_features"]:
         df[col] = np.log1p(df[col])
 
-    # --- 7. Escalado (mismo RobustScaler ajustado en train) ---
+    # --- Escalado  ---
     df[art["numerical_cols_to_scale"]] = art["scaler"].transform(
         df[art["numerical_cols_to_scale"]]
     )
@@ -82,13 +79,12 @@ def preprocesar_pasajero(raw: dict) -> pd.DataFrame:
     return df
 
 
-# ---------------------------------------------------------------------------
+
 # Formulario
-# ---------------------------------------------------------------------------
-st.title("🚀 Spaceship Titanic — Probar el modelo")
+st.title(" Spaceship Titanic — Predecir")
 st.caption(
-    "Modelo: Random Forest (`n_estimators=200`, `min_samples_leaf=5`) — la variante "
-    "que en la sección 5 superó al modelo oficial del equipo en Accuracy, F1 y ROC-AUC."
+ "Modelo: Random Forest tuneado con `GridSearchCV` (`n_estimators=300`, `max_depth=14`, "
+ "`min_samples_leaf=8`, `max_features=0.5`)"
 )
 
 col1, col2 = st.columns(2)
@@ -139,9 +135,9 @@ if st.button("Predecir", type="primary"):
 
     st.divider()
     if pred == 1:
-        st.success(f"✅ Predicción: **Transportado** (probabilidad: {proba:.1%})")
+        st.success(f" Predicción: **Transportado** (probabilidad: {proba:.1%})")
     else:
-        st.error(f"❌ Predicción: **No transportado** (probabilidad de sí: {proba:.1%})")
+        st.error(f" Predicción: **No transportado** (probabilidad de sí: {proba:.1%})")
 
     st.progress(float(proba))
 
